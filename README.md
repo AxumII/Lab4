@@ -11,10 +11,31 @@ Este repositorio contiene la solución al Laboratorio No. 04 de la asignatura **
 ---
 
 ##  Descripción General del Laboratorio
-El laboratorio tiene como finalidad el aprendizaje y familiarizacion del estudiante con Ubuntu y ROS usando turtlesim mediante la creacion de un script de Python con ejecucion multhilo y la implementacion de nodos se controle una tortuga por medio de comandos de teclado en la terminal, ademas de programar trayectorias automaticas tanto predefinidas por el usuario (letras y figuras) como la implementación de un sistema de seguimiento líder-seguidor de dos tortugas.
+El laboratorio tiene como finalidad el aprendizaje y familiarizacion del estudiante con Ubuntu y ROS usando turtlesim mediante la creacion de un script de Python con ejecucion multhilo y la implementacion de nodos se controle una tortuga por medio de comandos de teclado en la terminal. Ademas, se programan trayectorias automaticas tanto predefinidas por el usuario (letras y figuras) como la implementación de un sistema de seguimiento líder-seguidor de dos tortugas usando en ambos control de lazo cerrado.
 
 
 ---
+##  Estructura del repositorio
+
+turtlesim_workspace
+├── buld
+├── install
+├── log
+└── scr
+    └── my_turtle_controller
+        ├── my_turtle_controller
+        │   ├── __init__.py
+        │   ├── move_turtle.py
+        │   
+        ├── resource
+        │   └── my_turtle_controller
+        ├── test
+        │     
+        ├── package.xml
+        ├── setup.cfg
+        └── setup.py
+
+
 
 ##  Diagrama de Flujo (Mermaid)
 A continuación se presenta la lógica de funcionamiento del programa, abarcando desde la inicialización del nodo hasta su finalización segura:
@@ -60,27 +81,20 @@ graph TD
 * **Lógica y funciones:** Para capturar el teclado sin bloquear la ejecución paralela y los temporizadores del nodo de ROS 2, se implementó una lectura no bloqueante (usando la configuración de la terminal con los módulos `termios` y `sys` mediante un hilo secundario con `threading`. Al presionar las flechas direccionales (↑, ↓, ←, →), el programa genera un mensaje de tipo `geometry_msgs/msg/Twist`. Las flechas Arriba/Abajo modifican la componente de velocidad lineal (`linear.x`) y las flechas Izquierda/Derecha modifican la velocidad angular (`angular.z`), enviando los datos directamente a través del tópico `/turtle1/cmd_vel`.
 
 ### 2. Funciones Automáticas Implementadas
-* **Tecla S (Cuadrado):** Se estructuró un bucle controlado por tiempo. El nodo publica una velocidad lineal en `linear.x` para recorrer un segmento recto, y posteriormente aplica una velocidad angular constante en `angular.z` calculada junto con un temporizador para realizar un giro preciso de 90° ($\pi/2$ radianes). Esta secuencia se ejecuta de forma secuencial 4 veces.
-* **Tecla T (Triángulo Equilátero):** Sigue la misma lógica temporal que el cuadrado, pero ajustando la rotación en `angular.z` para completar giros externos de 120° ($2\pi/3$ radianes) repetidos en 3 ocasiones.
-* **Tecla R (Reiniciar):** Instancia un cliente de ROS 2 para invocar de manera asíncrona el servicio `/reset`. Al pulsar la tecla, el simulador limpia los trazos de la pantalla y reubica la tortuga en su posición inicial central (5.5, 5.5).
-* **Tecla P (Lápiz):** Llama de forma asíncrona al servicio `/turtle1/set_pen`. Modifica los parámetros de activación (`off`), permitiendo habilitar o deshabilitar el rastro de la tortuga para desplazarse sin dibujar.
-* **Tecla A (Evasión de límites):** El nodo se suscribe activamente al tópico `/turtle1/pose`. Si las coordenadas recibidas se aproximan a los límites críticos de la ventana del simulador (valores de $x$ o $y$ cercanos a 1.5 o 9.5), el algoritmo interrumpe momentáneamente el comando actual y publica velocidades angulares forzadas para hacer girar la tortuga y alejarla del borde.
-* **Tecla Q (Detener):** Detiene de forma inmediata cualquier rutina automática o manual enviando un mensaje `Twist` con todos sus componentes en cero absoluto a `/turtle1/cmd_vel, no afecta directamente a turtele2 aunque se detiene al alcanzar la tortuga principal.
+**Lógica del Controlador** : El nodo lee constantemente su posición desde /turtle1/pose. Al solicitar una figura, se calculan las coordenadas absolutas $(x,y)$ a visitar. El controlador ajusta dinámicamente la velocidad lineal proporcional a la distancia y la velocidad angular proporcional al error de orientación, minimizando ambos hasta llegar a una tolerancia (0.03 a 0.15 dependiendo del modo suave/estricto).
 
-### 3. Dibujo de Letras Personalizadas
-* **Iniciales del Grupo:** Se configuró la rutina para trazar las letras de las iniciales no usadas anteriormente de los nombres de los integrantes J, D, F y L para Jairo David Diaz Luna y Jose Luis Pulido Fonseca.
-* **Lógica de dibujo:** Se diseñó una pequeña máquina de estados basada en temporizadores de ROS 2. Cada letra se compone de una secuencia ordenada de avances lineales y giros angulares.
+**Teclas S, T, L, F (Estricto):** Genera secuencias de waypoints ortogonales o agudos (ej. Cuadrado, Triángulo, letras L y F). El sistema prioriza alinearse (velocidad angular pura) si el error angular es mayor a 0.05 rads antes de avanzar, logrando trazos precisos.
+**Teclas J, D (Fluido/Smooth):** Genera curvas calculadas con funciones paramétricas trigonométricas (seno y coseno) interpolando el arco. Permite cierto desplazamiento lineal simultáneo con el giro angular, logrando curvas limpias.
+**Tecla R (Reiniciar):** En lugar de usar el servicio /reset nativo que reinicia completamente el simulador, se realiza un reseteo inteligente para no perder a turtle2. Instancia clientes para invocar asíncronamente el servicio /clear (borrando los trazos) y servicios de /turtle1/teleport_absolute y /turtle2/teleport_absolute, regresando a turtle1 a (5.5, 5.5) y a turtle2 a (2.0, 2.0).
+**Tecla P (Lápiz):** Alterna el estado del lápiz invocando asíncronamente /turtle1/set_pen, modificando el parámetro off y enviando blanco (255, 255, 255) si dibuja o negro (0, 0, 0) si está inactivo.
+**Tecla A (Evasión de límites - Avoidance):** Activa un comportamiento de "caminata aleatoria" cambiando el giro cada cierto tiempo. Si la posición censada supera los márgenes de seguridad ($x, y < 1.5$ o $x, y > 9.5$), el nodo frena ligeramente, calcula el ángulo directo hacia el centro de la pantalla $(5.5, 5.5)$ y aplica un fuerte giro corrector proporcional para forzar el rebote y evitar estrellarse contra los muros.
+**Tecla Q (Detener):** Detiene las rutinas automáticas limpiando la lista de waypoints (target_waypoints.clear()) y envía de inmediato un mensaje Twist en cero para frenar en seco.
 
-### 4. Sistema Líder-Seguidor con Dos Tortugas
+### 3. Sistema Líder-Seguidor con Dos Tortugas
 * **Creación de la segunda tortuga:** Durante la inicialización del nodo, se realiza un llamado directo al servicio `/spawn` para generar a `turtle2` en una posición determinada.
 req.x = 2.0
 req.y = 2.0
-* **Algoritmo de seguimiento:** El nodo cuenta con dos suscripciones simultáneas a `/turtle1/pose` y `/turtle2/pose`. En la función callback se calcula el error de posición mediante la distancia euclidiana:
-  $$e = \sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2}$$
-  Y la orientación objetivo se define a través de:
-  $$\theta_{deseada} = \text{atan2}(y_1 - y_2, x_1 - x_2)$$
-  Aplicando un control proporcional simple ($K_p$), se determinan las velocidades lineales y angulares requeridas y se publican continuamente en `/turtle2/cmd_vel` para que la segunda tortuga persiga de manera dinámica a la primera.
-
+* **Algoritmo de seguimiento:**  El nodo se suscribe simultáneamente a /turtle1/pose y /turtle2/pose. Calcula continuamente el error de posición euclidiana y el error angular:$$e_{distancia} = \sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2}$$$$\theta_{deseada} = \text{atan2}(y_1 - y_2, x_1 - x_2)$$$$\theta_{error} = \theta_{deseada} - \theta_{actual}$$Constantes Proporcionales ($K_p$): Si la distancia es mayor a 0.3 metros (zona de tolerancia), se envían las siguientes velocidades limitadas (saturación):$V_{lineal} = \min(1.5, 1.2 \times e_{distancia})$$V_{angular} = \max(-2.5, \min(2.5, 3.0 \times \theta_{error}))$
 ---
 
 ## Descripción de Componentes ROS 2
@@ -147,11 +161,11 @@ Explicación de lo observado: Enumera las funciones a las que podemos llamar, co
 /turtle2/set_pen
 
 
-5. Visualización de la Arquitectura (rqt_graph)
+6. Visualización de la Arquitectura (rqt_graph)
 
 Explicación de las conexiones: Muestra visualmente la topología de la red de ROS, donde nuestro nodo lee las poses y escribe comandos Twist en ambas tortugas.
 
-Aca va una imagen xdxdxd
+
 
 Codigo Fuente. 
 
