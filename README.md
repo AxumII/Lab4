@@ -6,12 +6,12 @@ Este repositorio contiene la solución al Laboratorio No. 04 de la asignatura **
 
 ## 👥 Integrantes del Equipo
 * **Integrante 1:** Jairo David Diaz Luna - [Correo Electrónico / GitHub]
-* **Integrante 2:** [Nombre Completo] - [Correo Electrónico / GitHub]
+* **Integrante 2:** [Nombre Completo del Compañero] - [Correo Electrónico / GitHub]
 
 ---
 
 ## 📝 Descripción General del Laboratorio
-El laboratorio consiste en el diseño e implementación de un nodo en Python dentro del script `move_turtle.py` (ubicado en el workspace `my_turtle_controller`). Este nodo se encarga de gestionar de forma modular la teleoperación por teclado, la ejecución de trayectorias automáticas y geométricas, el dibujo de iniciales personalizadas y la implementación de un sistema de seguimiento líder-seguidor de dos tortugas.
+[Escribe aquí una descripción. Ejemplo: El laboratorio consiste en el diseño e implementación de un nodo en Python dentro del script `move_turtle.py` (ubicado en el workspace `my_turtle_controller`). Este nodo se encarga de gestionar de forma modular la teleoperación por teclado, la ejecución de trayectorias automáticas y geométricas, el dibujo de iniciales personalizadas y la implementación de un sistema de seguimiento líder-seguidor de dos tortugas].
 
 ---
 
